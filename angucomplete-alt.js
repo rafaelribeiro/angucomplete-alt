@@ -46,10 +46,10 @@
     // Set the default template for this directive
     $templateCache.put(TEMPLATE_URL,
         '<div class="angucomplete-holder" ng-class="{\'angucomplete-dropdown-visible\': showDropdown}">' +
-        '  <input id="{{id}}_value" name="{{inputName}}" ng-class="{\'angucomplete-input-not-empty\': notEmpty}" ng-model="searchStr" ng-disabled="disableInput" type="{{inputType}}" placeholder="{{placeholder}}" maxlength="{{maxlength}}" ng-focus="onFocusHandler()" class="{{inputClass}}" ng-focus="resetHideResults()" ng-blur="hideResults($event)" autocapitalize="off" autocorrect="off" autocomplete="off" ng-change="inputChangeHandler(searchStr)"/>' +
+        '  <input id="{{id}}_value" name="{{inputName}}" ng-class="{\'angucomplete-input-not-empty\': notEmpty}" ng-model="searchStr" aa-field="searchStr" aa-label="{{label}}" aa-valid-msg ng-disabled="disableInput" type="{{inputType}}" placeholder="{{placeholder}}" maxlength="{{maxlength}}" ng-focus="onFocusHandler()" class="{{inputClass}}" ng-focus="resetHideResults()" ng-blur="hideResults($event)" autocapitalize="off" autocorrect="off" autocomplete="off" ng-change="inputChangeHandler(searchStr)"/>' +
         '  <div id="{{id}}_dropdown" class="angucomplete-dropdown" ng-show="showDropdown">' +
         '    <div class="angucomplete-searching" ng-show="searching" ng-bind="textSearching"></div>' +
-        '    <div class="angucomplete-searching" ng-show="!searching && (!results || results.length == 0)" ng-bind="textNoResults"></div>' +
+        '    <div class="angucomplete-searching" ng-show="!searching && (!results || results.length == 0)">{{textNoResults}} <button ng-show="{{allowManual}}" ng-click="assign()">Inserir Manualmente</button></div>' +
         '    <div class="angucomplete-row" ng-repeat="result in results" ng-click="selectResult(result)" ng-mouseenter="hoverRow($index)" ng-class="{\'angucomplete-selected-row\': $index == currentIndex}">' +
         '      <div ng-if="imageField" class="angucomplete-image-holder">' +
         '        <img ng-if="result.image && result.image != \'\'" ng-src="{{result.image}}" class="angucomplete-image"/>' +
@@ -161,6 +161,10 @@
         return event.which ? event.which : event.keyCode;
       }
 
+      scope.assign = function(){
+          callOrAssign(scope.searchStr);
+        };
+        
       function callOrAssign(value) {
         if (typeof scope.selectedObject === 'function') {
           scope.selectedObject(value);
@@ -601,6 +605,31 @@
           scope.results = [];
         }
 
+	/* Sort by match position on text
+        *  Example: 
+	*    Searching for "al"
+	*    <b>Al</b>geria
+	*    El S<b>al<b>vador
+	*    Austr<b>al</b>ia
+	*    Centr<b>al</b> African Republic
+        *    Brunei Daruss<b>al</b>am
+        *  Maybe should be provided as an external function like custom matches 
+	*/
+        scope.results.sort(function(x,y){
+            var highlightText = '<span class="'+ scope.matchClass +'">';
+            var xIndex = x.title.toString().indexOf(highlightText);
+            var yIndex = y.title.toString().indexOf(highlightText);
+               
+            if (xIndex < yIndex) {
+              return -1;
+            }
+            if (xIndex > yIndex) {
+              return 1;
+            }
+            return 0;
+          });
+
+          
         if (scope.autoMatch && scope.results.length === 1 &&
             checkExactMatch(scope.results[0],
               {title: text, desc: description || ''}, scope.searchStr)) {
@@ -803,8 +832,10 @@
         focusOut: '&',
         focusIn: '&',
         inputName: '@',
+        label: '@',
         focusFirst: '@',
-        parseInput: '&'
+        parseInput: '&',
+        allowManual: '@'
       },
       templateUrl: function(element, attrs) {
         return attrs.templateUrl || TEMPLATE_URL;
